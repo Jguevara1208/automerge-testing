@@ -27,8 +27,7 @@ export async function addEventEmitter(type, identifier, user, queryKey) {
       typeMap[identifier].doc = undefined;
       // Generate and store the server doc
       const newDoc = A.from({ text: initialText });
-      const compressedDoc = A.save(newDoc);
-      typeMap[identifier].doc = compressedDoc;
+      typeMap[identifier].doc = newDoc;
     }
     if (!userSyncState[`${identifier}-${user}`]) {
       userSyncState[`${identifier}-${user}`] = A.initSyncState();

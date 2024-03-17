@@ -150,16 +150,8 @@ interface useCollaborativeDocumentArgs {
 
 export function useSharedDocument({ identifier, queryKey, sharedDocumentRef }: useCollaborativeDocumentArgs) {
   // Create local document
-  let doc: { text: string };
-  let syncState: A.SyncState;
-
-  // When the handshake happens for the event subscription, we will send back the current state of the shared document from the server
-  function syncLocalDocWithHeadDoc(serverDocAsBase64: string) {
-    const serverDocAsUint8Array = Uint8Array.from(atob(serverDocAsBase64), (c) => c.charCodeAt(0));
-    doc = A.load(serverDocAsUint8Array);
-    syncState = A.initSyncState();
-    sharedDocumentRef.value = doc.text;
-  }
+  let doc: { text: string } = A.init();
+  let syncState: A.SyncState = A.initSyncState();
 
   function sendSyncMessageToServer(syncMessage: any) {
     const syncMessageBase64 = btoa(String.fromCharCode.apply(null, syncMessage));
@@ -181,19 +173,23 @@ export function useSharedDocument({ identifier, queryKey, sharedDocumentRef }: u
     });
   }
 
+  function syncLocalDocWithHeadDoc() {
+    let syncMessage;
+    [syncState, syncMessage] = A.generateSyncMessage(doc, syncState);
+    console.log(syncMessage, 'sync message in the handshake!');
+
+    if (syncMessage) {
+      sendSyncMessageToServer(syncMessage);
+    }
+  }
+
   function handleUpdate(data: { syncMessage: string, user: string | null }) {
     // Potentially add the user check back here
     if (data.user === pandoStore.employee.uuid) {
-      console.log(data.syncMessage);
       const syncMessage = Uint8Array.from(atob(data.syncMessage), (c) => c.charCodeAt(0));
       let newSyncMessage;
-      console.log(doc, 'doc before');
-      console.log(syncState);
       [doc, syncState, newSyncMessage] = A.receiveSyncMessage(doc, syncState, syncMessage);
-      console.log(doc, 'doc after');
-      console.log(syncState);
 
-      console.log(newSyncMessage, 'new sync message for the server');
       if (newSyncMessage) {
         sendSyncMessageToServer(newSyncMessage);
       }

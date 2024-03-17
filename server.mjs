@@ -34,7 +34,7 @@ if (urlObject.pathname === '/automerge-updates') {
       if (body) {
         const { syncMessageBase64, identifier, queryKey, user } = JSON.parse(body);
         const eventObject = getEventObject('shared-doc', identifier);
-        let doc = A.load(eventObject.doc);
+        let { doc } = eventObject;
 
         let syncState = getUserSyncState(identifier, user);
         const recievedMessage = Uint8Array.from(Buffer.from(syncMessageBase64, 'base64'));
@@ -63,22 +63,19 @@ if (urlObject.pathname === '/automerge-updates') {
         });
 
         if (oldHeads[0] !== newHeads[0]) { // change this to take into account they are an array of heads
-          console.log('SENDING sync messages to all other users');
           eventObject.users.forEach((uuid) => {
             if (uuid !== user) {
               let userSyncState = getUserSyncState(identifier, uuid);
               const [newUserSyncState, newUserSyncMessage] = A.generateSyncMessage(doc, userSyncState);
               userSyncState = newUserSyncState;
-              console.log('updated individual users sync state')
               const userBuffer = Buffer.from(newUserSyncMessage);
               const userSyncMessageToBroadcast = userBuffer.toString('base64');
               eventObject.eventEmitter.emit('update', { user: uuid, syncMessage: userSyncMessageToBroadcast });
-              console.log('emitted that change to the other users',);
             }
           });
         }
 
-        eventObject.doc = A.save(doc);
+        eventObject.doc = doc;
 
         // const serializedData = JSON.stringify(newDoc.text);
         // const stringData = JSON.parse(serializedData);
@@ -129,12 +126,6 @@ if (urlObject.pathname === '/events') {
   const { eventEmitter } = eventObject;
   if (eventEmitter) {
     let handshakeData;
-    const compressedDoc = getSharedDocument(eventIdentifier);
-    if (compressedDoc) {
-      const buffer = Buffer.from(compressedDoc);
-      const base64String = buffer.toString('base64');
-      handshakeData = base64String;
-    }
     response.write(`event: handshake\ndata: ${JSON.stringify({ status: 'connected', handshakeData })}\n\n`);
 
     eventEmitter.on('update', (data) => {
